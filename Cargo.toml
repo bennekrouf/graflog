@@ -1,0 +1,9 @@
+[package]
+name = "graflog"
+version = "1.0"
+edition = "2024"
+
+[dependencies]
+chrono = { version = "0.4.42", features = ["serde"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
