@@ -54,3 +54,25 @@ macro_rules! app_log {
         )
     };
 }
+
+#[macro_export]
+macro_rules! app_span {
+    ($name:expr, $($field:tt)*) => {
+        $crate::tracing::info_span!(
+            $name,
+            service = env!("CARGO_PKG_NAME"),
+            component = "main",
+            timestamp = $crate::chrono::Utc::now().to_rfc3339(),
+            $($field)*
+        )
+    };
+    ($name:expr, $service:expr, $component:expr, $($field:tt)*) => {
+        $crate::tracing::info_span!(
+            $name,
+            service = $service,
+            component = $component,
+            timestamp = $crate::chrono::Utc::now().to_rfc3339(),
+            $($field)*
+        )
+    };
+}

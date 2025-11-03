@@ -1,6 +1,6 @@
 # graflog
 
-Structured JSON logging for Rust applications optimized for Grafana ingestion.
+Structured JSON logging optimized for Grafana ingestion. And abstraction boring tracing subscriber syntax, by the way.
 
 ## Features
 
@@ -10,16 +10,16 @@ Structured JSON logging for Rust applications optimized for Grafana ingestion.
 - Zero-configuration setup
 - Consistent timestamp formatting
 - Service and component tagging
+- Distributed tracing with spans
 
 ## Installation
-```toml
-[dependencies]
-graflog = "0.1"
+```bash
+cargo add graflog
 ```
 
 ## Usage
 ```rust
-use graflog::{init_logging, app_log};
+use graflog::{init_logging, app_log, app_span};
 
 fn main() {
     // Initialize logging - crashes if file path invalid
@@ -31,6 +31,22 @@ fn main() {
     
     // Log with custom service/component
     app_log!(debug, "user-service", "auth", "Login attempt", user_id = 12345);
+    
+    // Create spans for distributed tracing
+    let process_span = app_span!(
+        "process_payment",
+        user_id = %user_id,
+        amount = amount
+    );
+    let _enter = process_span.enter();
+    
+    // Custom service/component span
+    let auth_span = app_span!(
+        "validate_token",
+        "auth-service",
+        "jwt",
+        token_id = %token_id
+    );
 }
 ```
 
@@ -46,6 +62,7 @@ Logs are formatted with consistent fields:
 Perfect for Grafana Loki queries:
 ```logql
 {service="payment-service"} | json | level="error"
+{service="auth-service"} | json | component="jwt"
 ```
 
 ## Command Line Usage
