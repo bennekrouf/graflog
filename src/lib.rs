@@ -4,7 +4,7 @@ pub use tracing_subscriber;
 
 #[macro_export]
 macro_rules! init_logging {
-    ($file_path:expr, $service:expr, $component:expr) => {{
+    ($file_path:expr, $service:expr, $component:expr, $log_level:expr) => {{
         use std::sync::Once;
         static INIT: Once = Once::new();
 
@@ -33,7 +33,7 @@ macro_rules! init_logging {
                 )
                 .with(
                     EnvFilter::from_default_env()
-                        .add_directive("trace".parse().expect("Invalid log directive")),
+                        .add_directive($log_level.parse().expect("Invalid log directive")),
                 )
                 .init();
         });

@@ -23,7 +23,7 @@ use graflog::{init_logging, app_log, app_span};
 
 fn main() {
     // Initialize logging - crashes if file path invalid
-    init_logging!("/var/logs/myapp.log", "payment-service", "api");
+    init_logging!("/var/log/myapp.log", "payment-service", "api", "info");
     
     // Log with automatic service/component tags
     app_log!(info, "Server started on port 8080");
@@ -69,7 +69,12 @@ Perfect for Grafana Loki queries:
 
 Pass log file path at startup:
 ```bash
-cargo run -- --log-file /var/logs/myapp.log
+
+cargo run -- --log-file /var/log/myapp.log --log-level info
+
 ```
 
 No environment files needed - all parameters passed directly.
+
+Supported log levels: trace, debug, info, warn, error
+
