@@ -81,5 +81,7 @@ No environment files needed - all parameters passed directly.
 
 Supported log levels: trace, debug, info, warn, error
 
+Supports complex filters: `"info"`, `"debug,rocket::server=off"`, `"trace,hyper=warn"`Retry
+
 Logs output to both file and console by default. Pass `false` as last parameter to disable console output.Retry
 

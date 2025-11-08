@@ -126,3 +126,21 @@ mod tests {
         app_log!(warn, "Test warning");
     }
 }
+
+#[test]
+fn test_complex_filter_directives() {
+    use std::sync::Once;
+    static INIT: Once = Once::new();
+
+    INIT.call_once(|| {
+        // Test only target-specific directives (no global level)
+        init_logging!(
+            "/tmp/test_complex.log",
+            "test",
+            "component",
+            "graflog=debug"
+        );
+    });
+
+    app_log!(warn, "Testing complex filter directive");
+}
