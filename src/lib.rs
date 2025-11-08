@@ -5,9 +5,12 @@ pub use tracing_subscriber;
 #[macro_export]
 macro_rules! init_logging {
     ($file_path:expr, $service:expr, $component:expr, $log_level:expr) => {
-        $crate::init_logging!($file_path, $service, $component, $log_level, true)
+        $crate::init_logging!($file_path, $service, $component, $log_level, "", true)
     };
-    ($file_path:expr, $service:expr, $component:expr, $log_level:expr, $console:expr) => {{
+    ($file_path:expr, $service:expr, $component:expr, $log_level:expr, $console:expr) => {
+        $crate::init_logging!($file_path, $service, $component, $log_level, "", $console)
+    };
+    ($file_path:expr, $service:expr, $component:expr, $log_level:expr, $filters:expr, $console:expr) => {{
         use std::sync::Once;
         static INIT: Once = Once::new();
 
@@ -32,8 +35,23 @@ macro_rules! init_logging {
                 .with_thread_ids(false)
                 .with_thread_names(false);
 
-            let filter = EnvFilter::from_default_env()
-                .add_directive($log_level.parse().expect("Invalid log directive"));
+            let mut filter = EnvFilter::from_default_env().add_directive(
+                $log_level
+                    .parse()
+                    .unwrap_or_else(|e| panic!("Invalid log level '{}': {}", $log_level, e)),
+            );
+
+            if !$filters.is_empty() {
+                for filter_directive in $filters.split(',') {
+                    if !filter_directive.trim().is_empty() {
+                        filter = filter.add_directive(
+                            filter_directive.trim().parse().unwrap_or_else(|e| {
+                                panic!("Invalid filter directive '{}': {}", filter_directive, e)
+                            }),
+                        );
+                    }
+                }
+            }
 
             if $console {
                 let console_layer = fmt::layer()
@@ -110,13 +128,13 @@ mod tests {
 
     #[test]
     fn test_init_logging() {
-        let _ = init_logging!("/tmp/test.log", "test", "component", "info");
+        init_logging!("/tmp/test.log", "test", "component", "info");
         app_log!(info, "Test log message");
     }
 
     #[test]
     fn test_init_logging_no_console() {
-        let _ = init_logging!(
+        init_logging!(
             "/tmp/test_no_console.log",
             "test",
             "component",
@@ -125,22 +143,18 @@ mod tests {
         );
         app_log!(warn, "Test warning");
     }
-}
 
-#[test]
-fn test_complex_filter_directives() {
-    use std::sync::Once;
-    static INIT: Once = Once::new();
-
-    INIT.call_once(|| {
-        // Test only target-specific directives (no global level)
+    #[test]
+    fn test_logging_with_filters() {
         init_logging!(
-            "/tmp/test_complex.log",
+            "/tmp/test_filters.log",
             "test",
             "component",
-            "graflog=debug"
+            "debug",
+            "rocket::server=off",
+            true
         );
-    });
-
-    app_log!(warn, "Testing complex filter directive");
+        app_log!(debug, "Testing with filters");
+    }
 }
+
