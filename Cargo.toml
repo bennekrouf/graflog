@@ -1,6 +1,6 @@
 [package]
 name = "graflog"
-version = "1.4.0"
+version = "1.4.1"
 edition = "2024"
 description = "Structured JSON logging for Rust applications optimized for Grafana ingestion"
 license = "MIT"
