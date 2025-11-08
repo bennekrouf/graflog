@@ -23,36 +23,41 @@ macro_rules! init_logging {
                 .open($file_path)
                 .expect("Failed to open log file");
 
-            let mut registry = $crate::tracing_subscriber::registry().with(
-                fmt::layer()
+            let file_layer = fmt::layer()
+                .json()
+                .with_writer(file)
+                .with_current_span(false)
+                .with_span_list(false)
+                .with_target(false)
+                .with_thread_ids(false)
+                .with_thread_names(false);
+
+            let filter = EnvFilter::from_default_env()
+                .add_directive($log_level.parse().expect("Invalid log directive"));
+
+            if $console {
+                let console_layer = fmt::layer()
                     .json()
-                    .with_writer(file)
+                    .with_writer(std::io::stdout)
                     .with_current_span(false)
                     .with_span_list(false)
                     .with_target(false)
                     .with_thread_ids(false)
-                    .with_thread_names(false),
-            );
+                    .with_thread_names(false);
 
-            if $console {
-                registry = registry.with(
-                    fmt::layer()
-                        .json()
-                        .with_writer(std::io::stdout)
-                        .with_current_span(false)
-                        .with_span_list(false)
-                        .with_target(false)
-                        .with_thread_ids(false)
-                        .with_thread_names(false),
-                );
+                $crate::tracing_subscriber::registry()
+                    .with(file_layer)
+                    .with(console_layer)
+                    .with(filter)
+                    .try_init()
+                    .ok();
+            } else {
+                $crate::tracing_subscriber::registry()
+                    .with(file_layer)
+                    .with(filter)
+                    .try_init()
+                    .ok();
             }
-
-            registry
-                .with(
-                    EnvFilter::from_default_env()
-                        .add_directive($log_level.parse().expect("Invalid log directive")),
-                )
-                .init();
         });
     }};
 }
@@ -97,4 +102,27 @@ macro_rules! app_span {
             $($field)*
         )
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_init_logging() {
+        let _ = init_logging!("/tmp/test.log", "test", "component", "info");
+        app_log!(info, "Test log message");
+    }
+
+    #[test]
+    fn test_init_logging_no_console() {
+        let _ = init_logging!(
+            "/tmp/test_no_console.log",
+            "test",
+            "component",
+            "info",
+            false
+        );
+        app_log!(warn, "Test warning");
+    }
 }
