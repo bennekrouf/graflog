@@ -78,3 +78,5 @@ No environment files needed - all parameters passed directly.
 
 Supported log levels: trace, debug, info, warn, error
 
+Logs output to both file and console by default. Pass `false` as last parameter to disable console output.Retry
+
