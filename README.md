@@ -24,14 +24,17 @@ use graflog::{init_logging, app_log, app_span};
 fn main() {
     // Initialize logging - crashes if file path invalid
     init_logging!("/var/log/myapp.log", "payment-service", "api", "info");
-    
+
+    // Disable console output
+    // init_logging!("/var/log/myapp.log", "payment-service", "api", "info", false);i
+ 
     // Log with automatic service/component tags
     app_log!(info, "Server started on port 8080");
     app_log!(error, "Database connection failed", error_code = 500);
-    
+ 
     // Log with custom service/component
     app_log!(debug, "user-service", "auth", "Login attempt", user_id = 12345);
-    
+ 
     // Create spans for distributed tracing
     let process_span = app_span!(
         "process_payment",
