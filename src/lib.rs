@@ -37,6 +37,7 @@ macro_rules! init_logging {
             if $console {
                 registry = registry.with(
                     fmt::layer()
+                        .json()
                         .with_writer(std::io::stdout)
                         .with_current_span(false)
                         .with_span_list(false)
