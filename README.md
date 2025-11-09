@@ -1,6 +1,6 @@
 # graflog
 
-Structured JSON logging optimized for Grafana ingestion. And abstraction boring tracing subscriber syntax, by the way.
+Structured JSON logging optimized for Grafana ingestion. Clean enum-based configuration.
 
 ## Features
 
@@ -11,7 +11,7 @@ Structured JSON logging optimized for Grafana ingestion. And abstraction boring 
 - Consistent timestamp formatting
 - Service and component tagging
 - Distributed tracing with spans
-- Separate log level and filter configuration
+- Clean enum-based configuration
 
 ## Installation
 
@@ -22,20 +22,31 @@ cargo add graflog
 ## Usage
 
 ```rust
-use graflog::{init_logging, app_log, app_span};
+use graflog::{init_logging, app_log, app_span, LogOption};
 
 fn main() {
-    // Initialize logging with log level only
-    init_logging!("/var/log/myapp.log", "payment-service", "api", "info");
+    // Simple logging
+    init_logging!(&log_path, "payment-service", "api", &[LogOption::Debug]);
     
-    // Initialize with log level and target filters
-    init_logging!("/var/log/myapp.log", "payment-service", "api", "debug", "rocket::server=off", true);
+    // Silent rocket with console disabled
+    init_logging!(&log_path, "api0", "uploader", &[
+        LogOption::Debug,
+        LogOption::RocketOff,
+        LogOption::NoConsole
+    ]);
     
-    // Disable console output
-    init_logging!("/var/log/myapp.log", "payment-service", "api", "info", false);
+    // Multiple filters in any order
+    init_logging!(&log_path, "service", "component", &[
+        LogOption::ActixWarn,
+        LogOption::Info,
+        LogOption::HyperOff
+    ]);
     
-    // Multiple filters with console disabled
-    init_logging!("/var/log/myapp.log", "payment-service", "api", "debug", "rocket::server=off,hyper=warn", false);
+    // Custom filter
+    init_logging!(&log_path, "service", "component", &[
+        LogOption::Debug,
+        LogOption::Custom("my_crate::module=warn".to_string())
+    ]);
     
     // Log with automatic service/component tags
     app_log!(info, "Server started on port 8080");
@@ -51,30 +62,30 @@ fn main() {
         amount = amount
     );
     let _enter = process_span.enter();
-    
-    // Custom service/component span
-    let auth_span = app_span!(
-        "validate_token",
-        "auth-service",
-        "jwt",
-        token_id = %token_id
-    );
 }
 ```
 
 ## Configuration Options
 
 ### Log Levels
-Supported levels: `trace`, `debug`, `info`, `warn`, `error`
+- `LogOption::Trace`
+- `LogOption::Debug` 
+- `LogOption::Info`
+- `LogOption::Warn`
+- `LogOption::Error`
 
-### Target Filters
-Filter specific modules or crates:
-- `"rocket::server=off"` - Turn off rocket server logs
-- `"actix_web=warn"` - Set actix_web to warn level
-- `"hyper=info,tokio=debug"` - Multiple target filters
+### Framework Filters
+- `LogOption::RocketOff` - Turn off rocket logs
+- `LogOption::ActixOff` / `LogOption::ActixWarn` - Control actix_web logs
+- `LogOption::HyperOff` / `LogOption::HyperWarn` - Control hyper logs  
+- `LogOption::TokioOff` / `LogOption::TokioWarn` - Control tokio logs
 
-### Console Output
-Logs output to both file and console by default. Pass `false` as the console parameter to disable console output.
+### Console Control
+- `LogOption::Console` - Enable console output (default)
+- `LogOption::NoConsole` - Disable console output
+
+### Custom Filters
+- `LogOption::Custom("target=level".to_string())` - Any custom filter
 
 ## Grafana Integration
 
@@ -91,11 +102,18 @@ Perfect for Grafana Loki queries:
 {service="auth-service"} | json | component="jwt"
 ```
 
-## Command Line Usage
+## Migration from Previous Versions
 
-Pass log file path and level at startup:
-```bash
-cargo run -- --log-file /var/log/myapp.log --log-level debug
+Old syntax:
+```rust
+init_logging!(&log_path, "service", "component", "debug", "rocket::server=off", false);
 ```
 
-No environment files needed - all parameters passed directly.
+New syntax:
+```rust
+init_logging!(&log_path, "service", "component", &[
+    LogOption::Debug,
+    LogOption::RocketOff, 
+    LogOption::NoConsole
+]);
+```

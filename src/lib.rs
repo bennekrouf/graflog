@@ -2,15 +2,60 @@ pub use chrono;
 pub use tracing;
 pub use tracing_subscriber;
 
+#[derive(Debug, Clone)]
+pub enum LogOption {
+    // Log levels
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+
+    // Common framework filters
+    RocketOff,
+    ActixOff,
+    ActixWarn,
+    HyperOff,
+    HyperWarn,
+    TokioOff,
+    TokioWarn,
+
+    // Console control
+    Console,
+    NoConsole,
+
+    // Custom filter for anything else
+    Custom(String),
+}
+
+impl LogOption {
+    fn apply(&self, level: &mut String, filters: &mut Vec<String>, console: &mut bool) {
+        match self {
+            LogOption::Trace => *level = "trace".to_string(),
+            LogOption::Debug => *level = "debug".to_string(),
+            LogOption::Info => *level = "info".to_string(),
+            LogOption::Warn => *level = "warn".to_string(),
+            LogOption::Error => *level = "error".to_string(),
+
+            LogOption::RocketOff => filters.push("rocket=off".to_string()),
+            LogOption::ActixOff => filters.push("actix_web=off".to_string()),
+            LogOption::ActixWarn => filters.push("actix_web=warn".to_string()),
+            LogOption::HyperOff => filters.push("hyper=off".to_string()),
+            LogOption::HyperWarn => filters.push("hyper=warn".to_string()),
+            LogOption::TokioOff => filters.push("tokio=off".to_string()),
+            LogOption::TokioWarn => filters.push("tokio=warn".to_string()),
+
+            LogOption::Console => *console = true,
+            LogOption::NoConsole => *console = false,
+
+            LogOption::Custom(filter) => filters.push(filter.clone()),
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! init_logging {
-    ($file_path:expr, $service:expr, $component:expr, $log_level:expr) => {
-        $crate::init_logging!($file_path, $service, $component, $log_level, "", true)
-    };
-    ($file_path:expr, $service:expr, $component:expr, $log_level:expr, $console:expr) => {
-        $crate::init_logging!($file_path, $service, $component, $log_level, "", $console)
-    };
-    ($file_path:expr, $service:expr, $component:expr, $log_level:expr, $filters:expr, $console:expr) => {{
+    ($file_path:expr, $service:expr, $component:expr, $options:expr) => {{
         use std::sync::Once;
         static INIT: Once = Once::new();
 
@@ -18,6 +63,14 @@ macro_rules! init_logging {
             use std::fs::OpenOptions;
             use $crate::tracing_subscriber::prelude::*;
             use $crate::tracing_subscriber::{EnvFilter, fmt};
+
+            let mut level = "info".to_string(); // default
+            let mut filters = vec![];
+            let mut console = true; // default
+
+            for option in $options {
+                option.apply(&mut level, &mut filters, &mut console);
+            }
 
             let file = OpenOptions::new()
                 .create(true)
@@ -36,13 +89,14 @@ macro_rules! init_logging {
                 .with_thread_names(false);
 
             let mut filter = EnvFilter::from_default_env().add_directive(
-                $log_level
+                level
                     .parse()
-                    .unwrap_or_else(|e| panic!("Invalid log level '{}': {}", $log_level, e)),
+                    .unwrap_or_else(|e| panic!("Invalid log level '{}': {}", level, e)),
             );
 
-            if !$filters.is_empty() {
-                for filter_directive in $filters.split(',') {
+            if !filters.is_empty() {
+                let filter_str = filters.join(",");
+                for filter_directive in filter_str.split(',') {
                     if !filter_directive.trim().is_empty() {
                         filter = filter.add_directive(
                             filter_directive.trim().parse().unwrap_or_else(|e| {
@@ -53,7 +107,7 @@ macro_rules! init_logging {
                 }
             }
 
-            if $console {
+            if console {
                 let console_layer = fmt::layer()
                     .json()
                     .with_writer(std::io::stdout)
@@ -128,7 +182,7 @@ mod tests {
 
     #[test]
     fn test_init_logging() {
-        init_logging!("/tmp/test.log", "test", "component", "info");
+        init_logging!("/tmp/test.log", "test", "component", &[LogOption::Info]);
         app_log!(info, "Test log message");
     }
 
@@ -138,8 +192,7 @@ mod tests {
             "/tmp/test_no_console.log",
             "test",
             "component",
-            "info",
-            false
+            &[LogOption::Info, LogOption::NoConsole]
         );
         app_log!(warn, "Test warning");
     }
@@ -150,9 +203,7 @@ mod tests {
             "/tmp/test_filters.log",
             "test",
             "component",
-            "debug",
-            "rocket::server=off",
-            true
+            &[LogOption::Debug, LogOption::RocketOff]
         );
         app_log!(debug, "Testing with filters");
     }
