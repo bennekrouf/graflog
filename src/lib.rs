@@ -29,7 +29,7 @@ pub enum LogOption {
 }
 
 impl LogOption {
-    fn apply(&self, level: &mut String, filters: &mut Vec<String>, console: &mut bool) {
+    pub fn apply(&self, level: &mut String, filters: &mut Vec<String>, console: &mut bool) {
         match self {
             LogOption::Trace => *level = "trace".to_string(),
             LogOption::Debug => *level = "debug".to_string(),
@@ -208,4 +208,3 @@ mod tests {
         app_log!(debug, "Testing with filters");
     }
 }
-
