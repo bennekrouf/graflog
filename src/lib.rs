@@ -156,20 +156,22 @@ macro_rules! app_log {
 
 #[macro_export]
 macro_rules! app_span {
-    ($level:ident, $service:expr, $component:expr, $($arg:tt)*) => {
-        $crate::tracing::$level!(
-            service = $service,
-            component = $component,
-            timestamp = $crate::chrono::Utc::now().to_rfc3339(),
-            $($arg)*
-        )
-    };
-    ($level:ident, $($arg:tt)*) => {
-        $crate::tracing::$level!(
+    ($name:expr, $($field:tt)*) => {
+        $crate::tracing::info_span!(
+            $name,
             service = env!("CARGO_PKG_NAME"),
             component = "main",
             timestamp = $crate::chrono::Utc::now().to_rfc3339(),
-            $($arg)*
+            $($field)*
+        )
+    };
+    ($name:expr, $service:expr, $component:expr, $($field:tt)*) => {
+        $crate::tracing::info_span!(
+            $name,
+            service = $service,
+            component = $component,
+            timestamp = $crate::chrono::Utc::now().to_rfc3339(),
+            $($field)*
         )
     };
 }
